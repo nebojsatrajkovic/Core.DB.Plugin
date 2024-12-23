@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Template>
+
+	<Meta Method_Namespace="Core.DB.Plugin.Shared.Resources.Templates" Method_ClassName="DB_Query_Template" />
+
+	<SQL>
+		...
+		SQL query
+		...
+	</SQL>
+
+	<Parameter ClassName="Parameter_ClassName">
+		<ClassMember Name="PropertyName" Type="C#_Type" />
+		<ClassMember Name="PropertyName" Type="C#_Type" IsCollection="true" />
+	</Parameter>
+
+	<Result>
+
+		<ResultClass Name="Result_ClassName" IsCollection="false" GroupBy="Grouping_PropertyName">
+
+			<ClassMember Name="PropertyName" Type="C#_Type" />
+			<ClassMember Name="PropertyName" Type="C#_Type" />
+			<ClassMember Name="PropertyName" Type="C#_Type" />
+
+			<ClassMember Name="PropertyName" Type="Property_ClassName" IsClass="true" IsCollection="true" GroupBy="Grouping_PropertyName">
+				<ClassMember Name="PropertyName" Type="C#_Type" />
+				<ClassMember Name="PropertyName" Type="C#_Type" />
+				<ClassMember Name="PropertyName" Type="C#_Type" />
+				<ClassMember Name="PropertyName" Type="C#_Type" />
+			</ClassMember>
+		</ResultClass>
+
+	</Result>
+
+</Template>
