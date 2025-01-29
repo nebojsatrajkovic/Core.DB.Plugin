@@ -6,14 +6,14 @@ using MySql.Data.MySqlClient;
 
 namespace Core.DB.Plugin.MySQL.Controllers
 {
-    public abstract class MySQL_AbstractController : ControllerBase
+    public abstract class MySQL_ResultOf_AbstractController : ControllerBase
     {
         readonly ILogger logger;
         string _sessionToken = null!;
         CORE_DB_Connection _DB_Connection = null!;
         readonly string connectionString = null!;
 
-        protected MySQL_AbstractController(ILogger logger, string connectionString)
+        protected MySQL_ResultOf_AbstractController(ILogger logger, string connectionString)
         {
             this.logger = logger;
             this.connectionString = connectionString;
@@ -43,7 +43,7 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
         }
 
-        private void _ExecuteCommitAction(Action action, bool authenticate)
+        private ResultOf _ExecuteCommitAction(Func<ResultOf> action, bool authenticate)
         {
             try
             {
@@ -59,11 +59,20 @@ namespace Core.DB.Plugin.MySQL.Controllers
                     Authenticate(dbConnection);
                 }
 
-                action();
+                var result = action();
 
-                _DB_Connection.Commit();
+                if (result.Succeeded)
+                {
+                    _DB_Connection.Commit();
+                }
+                else
+                {
+                    _DB_Connection.RollBack();
+                }
 
                 _DB_Connection?.Dispose();
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -74,7 +83,7 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
         }
 
-        private T _ExecuteCommitAction<T>(Func<T> action, bool authenticate)
+        private ResultOf<T> _ExecuteCommitAction<T>(Func<ResultOf<T>> action, bool authenticate)
         {
             using var connection = new MySqlConnection(connectionString);
 
@@ -92,7 +101,14 @@ namespace Core.DB.Plugin.MySQL.Controllers
 
                 var result = action();
 
-                _DB_Connection.Commit();
+                if (result.Succeeded)
+                {
+                    _DB_Connection.Commit();
+                }
+                else
+                {
+                    _DB_Connection.RollBack();
+                }
 
                 _DB_Connection?.Dispose();
 
@@ -107,65 +123,33 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
         }
 
-        #region commit with auth
+        #region resultof commit with auth
 
-        protected void ExecuteCommitAction(Action action)
-        {
-            _ExecuteCommitAction(action, true);
-        }
-
-        protected T ExecuteCommitAction<T>(Func<T> action)
+        protected ResultOf ExecuteCommitAction(Func<ResultOf> action)
         {
             return _ExecuteCommitAction(action, true);
         }
 
-        protected void ExecuteCommitActionTask(Action action)
+        protected ResultOf<T> ExecuteCommitAction<T>(Func<ResultOf<T>> action)
         {
-            Task.Factory.StartNew(() =>
-            {
-                _ExecuteCommitAction(action, true);
-            });
+            return _ExecuteCommitAction(action, true);
         }
 
-        protected Task<T> ExecuteCommitActionTask<T>(Func<T> action)
-        {
-            return Task.Factory.StartNew(() =>
-            {
-                return _ExecuteCommitAction(action, true);
-            });
-        }
+        #endregion resultof commit with auth
 
-        #endregion commit with auth
+        #region resultof commit with no auth
 
-        #region commit with no auth
-
-        protected void ExecuteUnauthenticatedCommitAction(Action action)
-        {
-            _ExecuteCommitAction(action, false);
-        }
-
-        protected T ExecuteUnauthenticatedCommitAction<T>(Func<T> action)
+        protected ResultOf ExecuteUnauthenticatedCommitAction(Func<ResultOf> action)
         {
             return _ExecuteCommitAction(action, false);
         }
 
-        protected void ExecuteUnauthenticatedCommitActionTask(Action action)
+        protected ResultOf<T> ExecuteUnauthenticatedCommitAction<T>(Func<ResultOf<T>> action)
         {
-            Task.Factory.StartNew(() =>
-            {
-                _ExecuteCommitAction(action, false);
-            });
+            return _ExecuteCommitAction(action, false);
         }
 
-        protected Task<T> ExecuteUnauthenticatedCommitActionTask<T>(Func<T> action)
-        {
-            return Task.Factory.StartNew(() =>
-            {
-                return _ExecuteCommitAction(action, false);
-            });
-        }
-
-        #endregion commit with no auth
+        #endregion resultof commit with no auth
 
         protected abstract string GetSessionToken();
 
