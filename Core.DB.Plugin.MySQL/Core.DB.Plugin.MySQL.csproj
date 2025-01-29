@@ -20,6 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\playground\Core.Shared\Core.Shared.csproj" />
 	  <ProjectReference Include="..\Core.DB.Plugin.Shared\Core.DB.Plugin.Shared.csproj" />
 	</ItemGroup>
 
