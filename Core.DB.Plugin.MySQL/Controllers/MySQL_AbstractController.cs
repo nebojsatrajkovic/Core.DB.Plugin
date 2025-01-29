@@ -1,5 +1,4 @@
-﻿using Core.Shared.Models;
-using CoreCore.DB.Plugin.Shared.Database;
+﻿using CoreCore.DB.Plugin.Shared.Database;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;

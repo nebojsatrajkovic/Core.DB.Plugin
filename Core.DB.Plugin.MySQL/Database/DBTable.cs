@@ -108,7 +108,7 @@ namespace Core.DB.Plugin.MySQL.Database
 
                     if (ids.HasValue() && DBTable<T1, T2>.GetParameterValues(ids, out var parameterValues))
                     {
-                        var queryString = $"UPDATE {TableName} SET IsDeleted = 1 WHERE {PrimaryKeyProperty.Name} IN ({parameterValues})";
+                        var queryString = $"UPDATE {TableName} SET is_deleted = 1 WHERE {PrimaryKeyProperty.Name} IN ({parameterValues})";
 
                         using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
 
@@ -129,7 +129,7 @@ namespace Core.DB.Plugin.MySQL.Database
         /// <exception cref="NotImplementedException"></exception>
         public int SoftDelete(CORE_DB_Connection dbConnection, T2 parameter)
         {
-            var queryString = $"UPDATE {TableName} SET IsDeleted = 1 {GetWhereCondition(parameter)}";
+            var queryString = $"UPDATE {TableName} SET is_deleted = 1 {GetWhereCondition(parameter)}";
 
             using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
 
