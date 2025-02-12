@@ -123,6 +123,86 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
         }
 
+        private async Task<ResultOf> _ExecuteCommitAction_Async(Func<Task<ResultOf>> action, bool authenticate)
+        {
+            try
+            {
+                using var connection = new MySqlConnection(connectionString);
+
+                using var dbConnection = new CORE_DB_Connection(connection);
+
+                _DB_Connection = dbConnection;
+                _sessionToken = GetSessionToken();
+
+                if (authenticate)
+                {
+                    Authenticate(dbConnection);
+                }
+
+                var result = await action();
+
+                if (result.Succeeded)
+                {
+                    _DB_Connection.Commit();
+                }
+                else
+                {
+                    _DB_Connection.RollBack();
+                }
+
+                _DB_Connection?.Dispose();
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Failed to execute {action.Method.Name}");
+                _DB_Connection?.RollBack();
+                _DB_Connection?.Dispose();
+                throw;
+            }
+        }
+
+        private async Task<ResultOf<T>> _ExecuteCommitAction_Async<T>(Func<Task<ResultOf<T>>> action, bool authenticate)
+        {
+            using var connection = new MySqlConnection(connectionString);
+
+            using var dbConnection = new CORE_DB_Connection(connection);
+
+            _DB_Connection = dbConnection;
+            _sessionToken = GetSessionToken();
+
+            try
+            {
+                if (authenticate)
+                {
+                    Authenticate(_DB_Connection);
+                }
+
+                var result = await action();
+
+                if (result.Succeeded)
+                {
+                    _DB_Connection.Commit();
+                }
+                else
+                {
+                    _DB_Connection.RollBack();
+                }
+
+                _DB_Connection?.Dispose();
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Failed to execute {action.Method.Name}");
+                _DB_Connection?.RollBack();
+                _DB_Connection?.Dispose();
+                throw;
+            }
+        }
+
         #region resultof commit with auth
 
         protected ResultOf ExecuteCommitAction(Func<ResultOf> action)
@@ -133,6 +213,16 @@ namespace Core.DB.Plugin.MySQL.Controllers
         protected ResultOf<T> ExecuteCommitAction<T>(Func<ResultOf<T>> action)
         {
             return _ExecuteCommitAction(action, true);
+        }
+
+        protected async Task<ResultOf> ExecuteCommitAction_Async(Func<Task<ResultOf>> action)
+        {
+            return await _ExecuteCommitAction_Async(action, true);
+        }
+
+        protected async Task<ResultOf<T>> ExecuteCommitAction_Async<T>(Func<Task<ResultOf<T>>> action)
+        {
+            return await _ExecuteCommitAction_Async(action, true);
         }
 
         #endregion resultof commit with auth
@@ -147,6 +237,16 @@ namespace Core.DB.Plugin.MySQL.Controllers
         protected ResultOf<T> ExecuteUnauthenticatedCommitAction<T>(Func<ResultOf<T>> action)
         {
             return _ExecuteCommitAction(action, false);
+        }
+
+        protected async Task<ResultOf> ExecuteUnauthenticatedCommitAction_Async(Func<Task<ResultOf>> action)
+        {
+            return await _ExecuteCommitAction_Async(action, false);
+        }
+
+        protected async Task<ResultOf<T>> ExecuteUnauthenticatedCommitAction_Async<T>(Func<Task<ResultOf<T>>> action)
+        {
+            return await _ExecuteCommitAction_Async(action, false);
         }
 
         #endregion resultof commit with no auth
