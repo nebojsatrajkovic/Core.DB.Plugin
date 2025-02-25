@@ -77,6 +77,64 @@ namespace Core.DB.Plugin.MySQL.Database
             return result;
         }
 
+        public List<T1> Search(CORE_DB_Connection dbConnection, List<object?> ids)
+        {
+            var result = new List<T1>();
+
+            if (ids != null && ids.Count > 0)
+            {
+                if (GetParameterValues(ids, out var parameterValues) && PrimaryKeyProperty != null)
+                {
+                    var queryString = $"SELECT * FROM {TableName} WHERE {PrimaryKeyProperty.Name} IN ({parameterValues})";
+
+                    using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+                    using var reader = command.ExecuteReader();
+
+                    try
+                    {
+                        while (reader.Read())
+                        {
+                            var item = new T1();
+
+                            foreach (var property in Model_FilteredProperties)
+                            {
+                                if (property.PropertyType == typeof(bool))
+                                {
+                                    var value = reader[property.Name];
+
+                                    if (value is sbyte val)
+                                    {
+                                        var boolValue = val > 0;
+
+                                        property.SetValue(item, boolValue);
+                                    }
+                                    else
+                                    {
+                                        // not supported currently
+
+                                        property.SetValue(item, false);
+                                    }
+                                }
+                                else
+                                {
+                                    property.SetValue(item, reader[property.Name]);
+                                }
+                            }
+
+                            result.Add(item);
+                        }
+                    }
+                    finally
+                    {
+                        reader.Close();
+                    }
+                }
+            }
+
+            return result;
+        }
+
         #region soft delete
 
         /// <summary>
