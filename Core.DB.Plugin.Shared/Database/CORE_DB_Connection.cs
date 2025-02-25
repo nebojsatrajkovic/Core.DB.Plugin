@@ -11,6 +11,9 @@ namespace CoreCore.DB.Plugin.Shared.Database
         public DbConnection Connection => _Connection;
         public DbTransaction Transaction => _Transaction;
 
+        public int TenantID { get; set; }
+        public int AccountID { get; set; }
+
         public CORE_DB_Connection(DbConnection connection)
         {
             _Connection = connection;

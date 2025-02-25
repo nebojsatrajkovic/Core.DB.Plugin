@@ -9,7 +9,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
     public abstract class MySQL_ResultOf_AbstractController : ControllerBase
     {
         readonly ILogger logger;
-        string _sessionToken = null!;
         CORE_DB_Connection _DB_Connection = null!;
         readonly string connectionString = null!;
 
@@ -31,18 +30,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
         }
 
-        public string SessionToken
-        {
-            get
-            {
-                return _sessionToken;
-            }
-            set
-            {
-                _sessionToken = value;
-            }
-        }
-
         private ResultOf _ExecuteCommitAction(Func<ResultOf> action, bool authenticate)
         {
             try
@@ -52,7 +39,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
                 using var dbConnection = new CORE_DB_Connection(connection);
 
                 _DB_Connection = dbConnection;
-                _sessionToken = GetSessionToken();
 
                 if (authenticate)
                 {
@@ -90,7 +76,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
             using var dbConnection = new CORE_DB_Connection(connection);
 
             _DB_Connection = dbConnection;
-            _sessionToken = GetSessionToken();
 
             try
             {
@@ -132,7 +117,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
                 using var dbConnection = new CORE_DB_Connection(connection);
 
                 _DB_Connection = dbConnection;
-                _sessionToken = GetSessionToken();
 
                 if (authenticate)
                 {
@@ -170,7 +154,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
             using var dbConnection = new CORE_DB_Connection(connection);
 
             _DB_Connection = dbConnection;
-            _sessionToken = GetSessionToken();
 
             try
             {
@@ -250,8 +233,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
         }
 
         #endregion resultof commit with no auth
-
-        protected abstract string GetSessionToken();
 
         protected abstract void Authenticate(CORE_DB_Connection dbConnection);
     }
