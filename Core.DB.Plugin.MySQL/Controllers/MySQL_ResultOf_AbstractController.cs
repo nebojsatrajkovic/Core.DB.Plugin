@@ -30,7 +30,7 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
         }
 
-        private ResultOf _ExecuteCommitAction(Func<ResultOf> action, bool authenticate)
+        ResultOf _ExecuteCommitAction(Func<ResultOf> action, bool authenticate)
         {
             try
             {
@@ -62,14 +62,14 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"Failed to execute {action.Method.Name}");
+                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
                 _DB_Connection?.RollBack();
                 _DB_Connection?.Dispose();
                 throw;
             }
         }
 
-        private ResultOf<T> _ExecuteCommitAction<T>(Func<ResultOf<T>> action, bool authenticate)
+        ResultOf<T> _ExecuteCommitAction<T>(Func<ResultOf<T>> action, bool authenticate)
         {
             using var connection = new MySqlConnection(connectionString);
 
@@ -101,14 +101,14 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"Failed to execute {action.Method.Name}");
+                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
                 _DB_Connection?.RollBack();
                 _DB_Connection?.Dispose();
                 throw;
             }
         }
 
-        private async Task<ResultOf> _ExecuteCommitAction_Async(Func<Task<ResultOf>> action, bool authenticate)
+        async Task<ResultOf> _ExecuteCommitAction_Async(Func<Task<ResultOf>> action, bool authenticate)
         {
             try
             {
@@ -140,14 +140,14 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"Failed to execute {action.Method.Name}");
+                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
                 _DB_Connection?.RollBack();
                 _DB_Connection?.Dispose();
                 throw;
             }
         }
 
-        private async Task<ResultOf<T>> _ExecuteCommitAction_Async<T>(Func<Task<ResultOf<T>>> action, bool authenticate)
+        async Task<ResultOf<T>> _ExecuteCommitAction_Async<T>(Func<Task<ResultOf<T>>> action, bool authenticate)
         {
             using var connection = new MySqlConnection(connectionString);
 
@@ -179,7 +179,7 @@ namespace Core.DB.Plugin.MySQL.Controllers
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"Failed to execute {action.Method.Name}");
+                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
                 _DB_Connection?.RollBack();
                 _DB_Connection?.Dispose();
                 throw;
