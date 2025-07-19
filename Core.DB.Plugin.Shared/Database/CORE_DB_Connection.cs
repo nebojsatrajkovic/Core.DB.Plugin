@@ -13,6 +13,7 @@ namespace CoreCore.DB.Plugin.Shared.Database
 
         public int TenantID { get; set; }
         public int AccountID { get; set; }
+        public string? SessionToken { get; set; }
 
         public CORE_DB_Connection(DbConnection connection)
         {
