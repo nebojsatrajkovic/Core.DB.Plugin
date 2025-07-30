@@ -234,6 +234,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
 
         #endregion resultof commit with no auth
 
-        protected abstract void Authenticate(CORE_DB_Connection dbConnection);
+        protected virtual void Authenticate(CORE_DB_Connection dbConnection) { }
     }
 }
