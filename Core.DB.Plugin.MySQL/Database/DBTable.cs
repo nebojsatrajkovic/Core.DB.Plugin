@@ -77,6 +77,66 @@ namespace Core.DB.Plugin.MySQL.Database
             return result;
         }
 
+        /// <summary>
+        /// Search all table entries that match values passed by parameter
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        public async Task<List<T1>> SearchAsync(CORE_DB_Connection dbConnection, T2 parameter)
+        {
+            {
+                var result = new List<T1>();
+
+                var queryString = $"SELECT * FROM {TableName} {GetWhereCondition(parameter)}";
+
+                using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                try
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var item = new T1();
+
+                        foreach (var property in Model_FilteredProperties)
+                        {
+                            if (property.PropertyType == typeof(bool))
+                            {
+                                var value = reader[property.Name];
+
+                                if (value is sbyte val)
+                                {
+                                    var boolValue = val > 0;
+
+                                    property.SetValue(item, boolValue);
+                                }
+                                else
+                                {
+                                    // not supported currently
+
+                                    property.SetValue(item, false);
+                                }
+                            }
+                            else
+                            {
+                                property.SetValue(item, reader[property.Name]);
+                            }
+                        }
+
+                        result.Add(item);
+                    }
+                }
+                finally
+                {
+                    await reader.CloseAsync();
+                }
+
+                return result;
+            }
+        }
+
         public List<T1> Search(CORE_DB_Connection dbConnection, List<object?> ids)
         {
             var result = new List<T1>();
@@ -135,6 +195,64 @@ namespace Core.DB.Plugin.MySQL.Database
             return result;
         }
 
+        public async Task<List<T1>> SearchAsync(CORE_DB_Connection dbConnection, List<object?> ids)
+        {
+            var result = new List<T1>();
+
+            if (ids != null && ids.Count > 0)
+            {
+                if (GetParameterValues(ids, out var parameterValues) && PrimaryKeyProperty != null)
+                {
+                    var queryString = $"SELECT * FROM {TableName} WHERE {PrimaryKeyProperty.Name} IN ({parameterValues})";
+
+                    using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+                    using var reader = await command.ExecuteReaderAsync();
+
+                    try
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var item = new T1();
+
+                            foreach (var property in Model_FilteredProperties)
+                            {
+                                if (property.PropertyType == typeof(bool))
+                                {
+                                    var value = reader[property.Name];
+
+                                    if (value is sbyte val)
+                                    {
+                                        var boolValue = val > 0;
+
+                                        property.SetValue(item, boolValue);
+                                    }
+                                    else
+                                    {
+                                        // not supported currently
+
+                                        property.SetValue(item, false);
+                                    }
+                                }
+                                else
+                                {
+                                    property.SetValue(item, reader[property.Name]);
+                                }
+                            }
+
+                            result.Add(item);
+                        }
+                    }
+                    finally
+                    {
+                        await reader.CloseAsync();
+                    }
+                }
+            }
+
+            return result;
+        }
+
         #region soft delete
 
         /// <summary>
@@ -145,7 +263,18 @@ namespace Core.DB.Plugin.MySQL.Database
         /// <returns></returns>
         public int SoftDelete(CORE_DB_Connection dbConnection, T1 parameter)
         {
-            return SoftDelete(dbConnection, new List<T1> { parameter });
+            return SoftDelete(dbConnection, [parameter]);
+        }
+
+        /// <summary>
+        /// Soft delete single entry
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        public async Task<int> SoftDeleteAsync(CORE_DB_Connection dbConnection, T1 parameter)
+        {
+            return await SoftDeleteAsync(dbConnection, [parameter]);
         }
 
         /// <summary>
@@ -179,6 +308,36 @@ namespace Core.DB.Plugin.MySQL.Database
         }
 
         /// <summary>
+        /// Soft delete multiple entries
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        public async Task<int> SoftDeleteAsync(CORE_DB_Connection dbConnection, List<T1> parameter)
+        {
+            int result = 0;
+
+            if (parameter.HasValue())
+            {
+                if (PrimaryKeyProperty != null)
+                {
+                    var ids = parameter.Select(x => PrimaryKeyProperty.GetValue(x, null)).ToList();
+
+                    if (ids.HasValue() && DBTable<T1, T2>.GetParameterValues(ids, out var parameterValues))
+                    {
+                        var queryString = $"UPDATE {TableName} SET is_deleted = 1 WHERE {PrimaryKeyProperty.Name} IN ({parameterValues})";
+
+                        using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+                        result = await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Soft delete all entries that match values passed by parameter
         /// </summary>
         /// <param name="dbConnection"></param>
@@ -196,6 +355,24 @@ namespace Core.DB.Plugin.MySQL.Database
             return result;
         }
 
+        /// <summary>
+        /// Soft delete all entries that match values passed by parameter
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task<int> SoftDeleteAsync(CORE_DB_Connection dbConnection, T2 parameter)
+        {
+            var queryString = $"UPDATE {TableName} SET is_deleted = 1 {GetWhereCondition(parameter)}";
+
+            using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+            var result = await command.ExecuteNonQueryAsync();
+
+            return result;
+        }
+
         #endregion soft delete
 
         #region hard delete
@@ -208,7 +385,18 @@ namespace Core.DB.Plugin.MySQL.Database
         /// <returns></returns>
         public int Delete(CORE_DB_Connection dbConnection, T1 parameter)
         {
-            return Delete(dbConnection, new List<T1> { parameter });
+            return Delete(dbConnection, [parameter]);
+        }
+
+        /// <summary>
+        /// Hard delete single entry
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        public async Task<int> DeleteAsync(CORE_DB_Connection dbConnection, T1 parameter)
+        {
+            return await DeleteAsync(dbConnection, [parameter]);
         }
 
         /// <summary>
@@ -243,6 +431,37 @@ namespace Core.DB.Plugin.MySQL.Database
         }
 
         /// <summary>
+        /// Hard delete multiple entries
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task<int> DeleteAsync(CORE_DB_Connection dbConnection, List<T1> parameter)
+        {
+            int result = 0;
+
+            if (parameter.HasValue())
+            {
+                if (PrimaryKeyProperty != null)
+                {
+                    var ids = parameter.Select(x => PrimaryKeyProperty.GetValue(x, null)).ToList();
+
+                    if (ids.HasValue() && DBTable<T1, T2>.GetParameterValues(ids, out var parameterValues))
+                    {
+                        var queryString = $"DELETE FROM {TableName} WHERE {PrimaryKeyProperty.Name} IN ({parameterValues})";
+
+                        using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+                        result = await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Hard delete all entries that match values passed by parameter
         /// </summary>
         /// <param name="dbConnection"></param>
@@ -255,6 +474,23 @@ namespace Core.DB.Plugin.MySQL.Database
             using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
 
             var result = command.ExecuteNonQuery();
+
+            return result;
+        }
+
+        /// <summary>
+        /// Hard delete all entries that match values passed by parameter
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        public async Task<int> DeleteAsync(CORE_DB_Connection dbConnection, T2 parameter)
+        {
+            var queryString = $"DELETE FROM {TableName} {GetWhereCondition(parameter)}";
+
+            using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+            var result = await command.ExecuteNonQueryAsync();
 
             return result;
         }
@@ -280,6 +516,33 @@ namespace Core.DB.Plugin.MySQL.Database
             using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
 
             var result = command.ExecuteNonQuery();
+
+            var id = Convert.ChangeType(command.LastInsertedId, primaryKeyProperty.PropertyType);
+
+            primaryKeyProperty.SetValue(parameter, id);
+
+            return parameter;
+        }
+
+        /// <summary>
+        /// Saves the entry in the database.
+        /// </summary>
+        /// <param name="dbConnection"></param>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public async Task<T1> SaveAsync(CORE_DB_Connection dbConnection, T1 parameter)
+        {
+            var primaryKeyProperty = PrimaryKeyProperty ?? throw new Exception($"Primary key property not found for type {typeof(T1).Name}");
+
+            var (columns, values) = GetColumnsAndValues(parameter);
+            var onDuplicateKeyStatement = OnDuplicateKeyStatement();
+
+            var queryString = $"INSERT INTO {TableName} ({columns}) VALUES ({values}) as statement ON DUPLICATE KEY UPDATE {onDuplicateKeyStatement}";
+
+            using var command = new MySqlCommand(queryString, (MySqlConnection)dbConnection.Connection, (MySqlTransaction)dbConnection.Transaction);
+
+            var result = await command.ExecuteNonQueryAsync();
 
             var id = Convert.ChangeType(command.LastInsertedId, primaryKeyProperty.PropertyType);
 
