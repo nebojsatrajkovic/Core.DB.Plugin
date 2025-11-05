@@ -1,8 +1,10 @@
-﻿using Core.Shared.Models;
+﻿using Core.Shared.Attributes;
+using Core.Shared.Models;
 using CoreCore.DB.Plugin.Shared.Database;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
+using System.Reflection;
 
 namespace Core.DB.Plugin.MySQL.Controllers
 {
@@ -160,6 +162,13 @@ namespace Core.DB.Plugin.MySQL.Controllers
                 if (authenticate)
                 {
                     Authenticate(_DB_Connection);
+
+                    var requiredRights = action.Method.GetCustomAttributes<CORE_AUTH_RequiredRight>().Where(x => !string.IsNullOrEmpty(x.RequiredRight)).Select(x => x.RequiredRight).ToList();
+
+                    if (requiredRights != null && requiredRights.Count > 0)
+                    {
+                        Authorize(_DB_Connection, [.. requiredRights]);
+                    }
                 }
 
                 var result = await action();
@@ -235,5 +244,7 @@ namespace Core.DB.Plugin.MySQL.Controllers
         #endregion resultof commit with no auth
 
         protected virtual void Authenticate(CORE_DB_Connection dbConnection) { }
+
+        protected virtual void Authorize(CORE_DB_Connection connection, List<string> requiredRights) { return ResultOf.Success; }
     }
 }
