@@ -45,6 +45,13 @@ namespace Core.DB.Plugin.MySQL.Controllers
                 if (authenticate)
                 {
                     Authenticate(dbConnection);
+
+                    var requiredRights = action.Method.GetCustomAttributes<CORE_AUTH_RequiredRight>().Where(x => !string.IsNullOrEmpty(x.RequiredRight)).Select(x => x.RequiredRight).ToList();
+
+                    if (requiredRights != null && requiredRights.Count > 0)
+                    {
+                        Authorize(_DB_Connection, [.. requiredRights]);
+                    }
                 }
 
                 var result = action();
@@ -58,98 +65,17 @@ namespace Core.DB.Plugin.MySQL.Controllers
                     _DB_Connection.RollBack();
                 }
 
-                _DB_Connection?.Dispose();
-
                 return result;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
                 _DB_Connection?.RollBack();
-                _DB_Connection?.Dispose();
                 throw;
             }
         }
 
         ResultOf<T> _ExecuteCommitAction<T>(Func<ResultOf<T>> action, bool authenticate)
-        {
-            using var connection = new MySqlConnection(connectionString);
-
-            using var dbConnection = new CORE_DB_Connection(connection);
-
-            _DB_Connection = dbConnection;
-
-            try
-            {
-                if (authenticate)
-                {
-                    Authenticate(_DB_Connection);
-                }
-
-                var result = action();
-
-                if (result.Succeeded)
-                {
-                    _DB_Connection.Commit();
-                }
-                else
-                {
-                    _DB_Connection.RollBack();
-                }
-
-                _DB_Connection?.Dispose();
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
-                _DB_Connection?.RollBack();
-                _DB_Connection?.Dispose();
-                throw;
-            }
-        }
-
-        async Task<ResultOf> _ExecuteCommitAction_Async(Func<Task<ResultOf>> action, bool authenticate)
-        {
-            try
-            {
-                using var connection = new MySqlConnection(connectionString);
-
-                using var dbConnection = new CORE_DB_Connection(connection);
-
-                _DB_Connection = dbConnection;
-
-                if (authenticate)
-                {
-                    Authenticate(dbConnection);
-                }
-
-                var result = await action();
-
-                if (result.Succeeded)
-                {
-                    _DB_Connection.Commit();
-                }
-                else
-                {
-                    _DB_Connection.RollBack();
-                }
-
-                _DB_Connection?.Dispose();
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
-                _DB_Connection?.RollBack();
-                _DB_Connection?.Dispose();
-                throw;
-            }
-        }
-
-        async Task<ResultOf<T>> _ExecuteCommitAction_Async<T>(Func<Task<ResultOf<T>>> action, bool authenticate)
         {
             using var connection = new MySqlConnection(connectionString);
 
@@ -171,6 +97,49 @@ namespace Core.DB.Plugin.MySQL.Controllers
                     }
                 }
 
+                var result = action();
+
+                if (result.Succeeded)
+                {
+                    _DB_Connection.Commit();
+                }
+                else
+                {
+                    _DB_Connection.RollBack();
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
+                _DB_Connection?.RollBack();
+                throw;
+            }
+        }
+
+        async Task<ResultOf> _ExecuteCommitAction_Async(Func<Task<ResultOf>> action, bool authenticate)
+        {
+            try
+            {
+                using var connection = new MySqlConnection(connectionString);
+
+                using var dbConnection = new CORE_DB_Connection(connection);
+
+                _DB_Connection = dbConnection;
+
+                if (authenticate)
+                {
+                    await AuthenticateAsync(dbConnection);
+
+                    var requiredRights = action.Method.GetCustomAttributes<CORE_AUTH_RequiredRight>().Where(x => !string.IsNullOrEmpty(x.RequiredRight)).Select(x => x.RequiredRight).ToList();
+
+                    if (requiredRights != null && requiredRights.Count > 0)
+                    {
+                        await AuthorizeAsync(_DB_Connection, [.. requiredRights]);
+                    }
+                }
+
                 var result = await action();
 
                 if (result.Succeeded)
@@ -182,7 +151,48 @@ namespace Core.DB.Plugin.MySQL.Controllers
                     _DB_Connection.RollBack();
                 }
 
-                _DB_Connection?.Dispose();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
+                _DB_Connection?.RollBack();
+                throw;
+            }
+        }
+
+        async Task<ResultOf<T>> _ExecuteCommitAction_Async<T>(Func<Task<ResultOf<T>>> action, bool authenticate)
+        {
+            using var connection = new MySqlConnection(connectionString);
+
+            using var dbConnection = new CORE_DB_Connection(connection);
+
+            _DB_Connection = dbConnection;
+
+            try
+            {
+                if (authenticate)
+                {
+                    await AuthenticateAsync(_DB_Connection);
+
+                    var requiredRights = action.Method.GetCustomAttributes<CORE_AUTH_RequiredRight>().Where(x => !string.IsNullOrEmpty(x.RequiredRight)).Select(x => x.RequiredRight).ToList();
+
+                    if (requiredRights != null && requiredRights.Count > 0)
+                    {
+                        await AuthorizeAsync(_DB_Connection, [.. requiredRights]);
+                    }
+                }
+
+                var result = await action();
+
+                if (result.Succeeded)
+                {
+                    _DB_Connection.Commit();
+                }
+                else
+                {
+                    _DB_Connection.RollBack();
+                }
 
                 return result;
             }
@@ -190,7 +200,6 @@ namespace Core.DB.Plugin.MySQL.Controllers
             {
                 logger.LogError(ex, "Failed to execute {method}", action.Method.Name);
                 _DB_Connection?.RollBack();
-                _DB_Connection?.Dispose();
                 throw;
             }
         }
@@ -243,8 +252,10 @@ namespace Core.DB.Plugin.MySQL.Controllers
 
         #endregion resultof commit with no auth
 
-        protected virtual void Authenticate(CORE_DB_Connection dbConnection) { }
+        protected abstract void Authenticate(CORE_DB_Connection dbConnection);
+        protected abstract Task AuthenticateAsync(CORE_DB_Connection dbConnection);
 
-        protected virtual void Authorize(CORE_DB_Connection connection, List<string> requiredRights) { return ResultOf.Success; }
+        protected abstract void Authorize(CORE_DB_Connection connection, List<string> requiredRights);
+        protected abstract Task AuthorizeAsync(CORE_DB_Connection connection, List<string> requiredRights);
     }
 }
